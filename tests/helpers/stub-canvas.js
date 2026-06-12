@@ -46,4 +46,24 @@ export function stubCanvasContext() {
     }
     return this[CONTEXT];
   };
+
+  // jsdom has no OffscreenCanvas; the boot path constructs one (state.js). Provide
+  // a minimal constructible stub whose getContext returns the same no-op context.
+  if (typeof globalThis.OffscreenCanvas === 'undefined') {
+    globalThis.OffscreenCanvas = class OffscreenCanvas {
+      constructor(width = 0, height = 0) {
+        this.width = width;
+        this.height = height;
+        this[CONTEXT] = null;
+      }
+      getContext() {
+        if (!this[CONTEXT]) {
+          const ctx = makeContext();
+          ctx.canvas = this;
+          this[CONTEXT] = ctx;
+        }
+        return this[CONTEXT];
+      }
+    };
+  }
 }
