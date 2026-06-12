@@ -3,6 +3,8 @@
  * Handles all UI interactions, modal dialogs, and button states
  */
 
+import { brushState } from './state.js';
+
 /**
  * Custom confirm dialog
  */
@@ -401,6 +403,74 @@ export function initializeUI() {
   }
   
   console.log('UI initialized');
+}
+
+/**
+ * Brush-shape buttons: id-in-app.html -> brushShape value.
+ * Mirrors the monolith brushButtons map (editor.js:2311) for the shape
+ * buttons. Selection-tool buttons (square/circle/basquiat) are bound
+ * separately — see ADR-0002 follow-up.
+ */
+const BRUSH_SHAPE_BUTTONS = {
+  boxBtn: 'box',
+  circleBtn: 'circle',
+  rectangleBtn: 'rectangle',
+  // 'triangle' button selects the 'diamond' shape in the monolith, which is
+  // stored back as 'triangle' (editor.js:9240/9258); preserve that contract.
+  triangleBtn: 'diamond',
+  meltBtn: 'melt',
+  brokenScreenBtn: 'brokenScreen',
+  sweeperBtn: 'sweeper',
+  oilbarrelBtn: 'oilbarrel',
+  aestheticLinesBtn: 'aestheticLines',
+  tvBtn: 'tv',
+  negativeBtn: 'negative',
+  jazzScatterBtn: 'jazzScatter',
+};
+
+/**
+ * Set the active brush shape and reflect it in the button UI.
+ *
+ * Thin wiring over brushState — the drawing/effects modules already read
+ * brushState.brushShape (ADR-0003: no forked logic). Reproduces the monolith's
+ * observable contract for shape buttons (editor.js:9222 setBrushShape): the
+ * 'diamond' selection is stored as 'triangle', all shape buttons lose their
+ * active classes, and the chosen one gains '.selected'.
+ *
+ * @param {string} shape - The brush shape (a value from BRUSH_SHAPE_BUTTONS)
+ */
+export function setBrushShape(shape) {
+  brushState.brushShape = shape === 'diamond' ? 'triangle' : shape;
+
+  for (const id of Object.keys(BRUSH_SHAPE_BUTTONS)) {
+    const btn = document.getElementById(id);
+    if (btn) btn.classList.remove('selected', 'active');
+  }
+
+  const activeId = shape === 'diamond' ? 'triangleBtn' : `${shape}Btn`;
+  const activeBtn = document.getElementById(activeId);
+  if (activeBtn) activeBtn.classList.add('selected');
+}
+
+/**
+ * Bind the brush-shape buttons so clicking one sets the active brush.
+ *
+ * Per ADR-0001 this runs at boot (called from initialize() after state is
+ * ready), not at import time. Buttons are thin wiring over setBrushShape;
+ * touchstart mirrors click for parity with the monolith's binding
+ * (editor.js:9438+).
+ */
+export function initializeButtons() {
+  for (const [id, shape] of Object.entries(BRUSH_SHAPE_BUTTONS)) {
+    const btn = document.getElementById(id);
+    if (!btn) continue;
+    btn.addEventListener('click', () => setBrushShape(shape));
+    btn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      setBrushShape(shape);
+    });
+  }
+  console.log('Buttons initialized');
 }
 
 /**

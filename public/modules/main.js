@@ -75,6 +75,10 @@ function initialize() {
   // Initialize UI
   UI.initializeUI();
 
+  // Bind the brush/effect/selection buttons to their actions (ADR-0002 gap).
+  // Runs here, after state is ready, not at import time (ADR-0001).
+  UI.initializeButtons();
+
   // Initialize blockchain/wallet UI
   Blockchain.initializeWallet();
 
