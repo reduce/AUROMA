@@ -2,3 +2,8 @@ node_modules/
 .parcel-cache/
 dist/
 .DS_Store
+
+# Local agent/tool state (machine-generated, not project source)
+.claude-flow/
+.claude/
+ruvector.db
