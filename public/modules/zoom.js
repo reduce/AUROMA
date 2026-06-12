@@ -11,6 +11,7 @@ import {
   originalDimensions
 } from './state.js';
 import { disableSelectionButtons, enableSelectionButtons } from './ui.js';
+import { clearSelectionState } from './selection.js';
 
 /**
  * Handle zoom wheel event
@@ -274,6 +275,104 @@ export function clampView(state, canvas, cursorX = null, cursorY = null) {
   }
 
   return { panX, panY };
+}
+
+/**
+ * Returns true if any modal is currently visible. Used to suppress zoom
+ * shortcuts while a modal is open. Ported from editor.js:14098.
+ */
+export function isAnyModalOpen() {
+  const allModalIds = [
+    'aboutModal', 'randomizerModal', 'recordModal',
+    'printerModal', 'saveModal', 'resolutionModal',
+    'colorPickerModal', 'nftModal', 'networkModal',
+    'ethereumContractModal', 'erc721MetadataModal',
+    'erc1155MetadataModal', 'tezosMetadataModal',
+    'roninMetadataModal', 'auroma25Modal'
+  ];
+  return allModalIds.some(modalId => {
+    const modal = document.getElementById(modalId);
+    if (!modal) return false;
+    return getComputedStyle(modal).display !== 'none';
+  });
+}
+
+/**
+ * Minimal zoom-mode entry (ADR-0002 stub).
+ *
+ * Sets the state that the extracted drag/draw paths read (zoomState.isZooming,
+ * per-canvas target-locks), clears selection, and disables selection buttons.
+ * The deep interactive double-click / pan-pivot internals (~130 lines of the
+ * original enterZoomMode) are deferred — wheel-zoom (handleZoomWheel) already
+ * provides working zoom.
+ */
+export function enterZoomMode() {
+  if (zoomState.isZooming) return;
+  clearSelectionState();
+  disableSelectionButtons();
+  zoomState.isZooming = true;
+  Object.keys(zoomState.canvasStates).forEach(key => {
+    const s = zoomState.canvasStates[key];
+    s.targetLocked = false;
+    s.targetX = 0;
+    s.targetY = 0;
+    s.zoomPivotX = 0;
+    s.zoomPivotY = 0;
+  });
+  const zoomBtn = document.getElementById('zoomBtn');
+  if (zoomBtn) zoomBtn.classList.add('active');
+}
+
+/**
+ * Minimal zoom-mode exit (ADR-0002 stub). Mirrors enterZoomMode: clears the
+ * zoom flag, re-enables selection buttons, clears selection state, and (unless
+ * preserving) clears per-canvas target-locks. Handler-removal from the deep
+ * version is unnecessary because the stub entry never attaches those handlers.
+ */
+export function exitZoomMode(preserveZoom = false) {
+  if (!zoomState.isZooming) return;
+  zoomState.isZooming = false;
+  enableSelectionButtons();
+  clearSelectionState();
+  if (!preserveZoom) {
+    Object.keys(zoomState.canvasStates).forEach(key => {
+      const s = zoomState.canvasStates[key];
+      s.targetLocked = false;
+      s.zoomPivotX = 0;
+      s.zoomPivotY = 0;
+    });
+  }
+  const zoomBtn = document.getElementById('zoomBtn');
+  if (zoomBtn) zoomBtn.classList.remove('active');
+}
+
+/**
+ * Wire the zoom button (click + touch) to toggle zoom mode, plus a global-click
+ * detoggle. Per ADR-0001 this runs at boot, not at import time. The canvas wheel
+ * listener is owned by initializeDrawing(); this owns only the button + detoggle.
+ */
+export function initializeZoom() {
+  const zoomBtn = document.getElementById('zoomBtn');
+  if (!zoomBtn) return;
+
+  const toggle = () => (zoomState.isZooming ? exitZoomMode(true) : enterZoomMode());
+
+  zoomBtn.addEventListener('click', (e) => {
+    if (e.button === 0) { e.preventDefault(); toggle(); }
+  });
+  zoomBtn.addEventListener('touchend', (e) => { e.preventDefault(); toggle(); }, { passive: false });
+  zoomBtn.addEventListener('touchcancel', () => exitZoomMode());
+
+  // Global-click detoggle: leaving zoom when clicking outside the canvas/controls.
+  document.addEventListener('click', (e) => {
+    if (!zoomState.isZooming || e.button !== 0) return;
+    if (e.target === zoomBtn || zoomBtn.contains(e.target)) return;
+    if (e.target === canvasRefs.baseCanvas || e.target === canvasRefs.paintCanvas ||
+        e.target === canvasRefs.samplerCanvas || !e.target.closest('#leftControls')) {
+      return;
+    }
+    exitZoomMode();
+  });
 }
 
 // Expose for backward compatibility

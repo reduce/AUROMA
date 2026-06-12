@@ -637,6 +637,18 @@ export function getSelectionCanvasElement() {
   return getSelectionCanvas();
 }
 
+/**
+ * Initialize selection — state setup only.
+ *
+ * Per ADR-0002, the selection brush-shape buttons (squareSelectionBtn, etc.) are
+ * part of the global effectMap-driven button-binding system that was never
+ * extracted; they are NOT wired here. The canvas pointer event loop is owned by
+ * initializeDrawing(). So at boot this only guarantees a clean selection state.
+ */
+export function initializeSelection() {
+  clearSelectionState();
+}
+
 // Expose for backward compatibility
 if (typeof window !== 'undefined') {
   window.startSquareSelection = startSquareSelection;

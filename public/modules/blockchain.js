@@ -6,7 +6,7 @@
  */
 
 import { canvasRefs, walletState } from './state.js';
-import { showWalletConnectionRequired } from './ui.js';
+import { showWalletConnectionRequired, openNetworkModal, closeNetworkModal } from './ui.js';
 
 // Module-level variables (will be managed via state)
 let selectedCanvas = null;
@@ -461,8 +461,32 @@ export function updateNFTCanvasPreview(canvasId, previewElementId) {
   }
 }
 
+/**
+ * Wire the wallet connect button and network modal. Per ADR-0001 this runs at
+ * boot, not at import time. Ported from editor.js:939-957.
+ */
+export function initializeWallet() {
+  const walletBtn = document.getElementById('walletConnectBtn');
+  if (walletBtn) walletBtn.addEventListener('click', openNetworkModal);
+
+  const closeBtn = document.getElementById('closeNetworkBtn');
+  if (closeBtn) closeBtn.addEventListener('click', closeNetworkModal);
+  const cancelBtn = document.getElementById('cancelNetworkBtn');
+  if (cancelBtn) cancelBtn.addEventListener('click', closeNetworkModal);
+
+  document.querySelectorAll('.network-option').forEach(option => {
+    option.addEventListener('click', () => {
+      const network = option.dataset.network;
+      if (network === 'ethereum') connectToEthereum();
+      else if (network === 'tezos') connectToTezos();
+      else if (network === 'ronin') connectToRonin();
+    });
+  });
+}
+
 // Expose for backward compatibility
 if (typeof window !== 'undefined') {
+  window.initializeWallet = initializeWallet;
   window.connectToEthereum = connectToEthereum;
   window.connectToTezos = connectToTezos;
   window.connectToRonin = connectToRonin;

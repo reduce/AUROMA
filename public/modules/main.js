@@ -58,30 +58,35 @@ if (document.readyState === 'loading') {
 
 function initialize() {
   console.log('AUROMA Initializing...');
-  
-  // Initialize canvas manager
+
+  // Canvas refs are populated at module load (initializeCanvasRefs, above).
+  // Drawing owns the canvas pointer/wheel/touch event loop and must be wired
+  // first now that refs exist (ADR-0001, ADR-0002).
+  Drawing.initializeDrawing();
+
+  // Initialize canvas manager (drag-and-drop image loading)
   CanvasManager.initializeDragAndDrop();
-  
+
   // Initialize MIDI if available
   if (navigator.requestMIDIAccess) {
     MIDI.initMIDI();
   }
-  
+
   // Initialize UI
   UI.initializeUI();
-  
+
   // Initialize blockchain/wallet UI
   Blockchain.initializeWallet();
-  
-  // Initialize zoom
+
+  // Initialize zoom (button toggle + detoggle; wheel listener is on the canvas via Drawing)
   Zoom.initializeZoom();
-  
-  // Initialize selection
+
+  // Initialize selection (state setup; buttons are a separate gap — ADR-0002)
   Selection.initializeSelection();
-  
+
   // Ensure initial state
   History.ensureInitialState();
-  
+
   console.log('AUROMA Initialized!');
 }
 
